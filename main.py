@@ -37,7 +37,7 @@ def main():
         RenderView = GetRenderViewFromLog()
 
         datamodel_ptr = Process.read_longlong(RenderView + 0x118)
-        datamodel = Process.read_longlong(datamodel_ptr + 0x198)
+        datamodel = Process.read_longlong(datamodel_ptr + 0x1a8)
 
         print("[+] Found DataModel: " + hex(datamodel))
 
@@ -61,7 +61,7 @@ def main():
         jobid_offset = 0x1
 
         # CONFIG
-        REAL_PLAYER_NAME = "Sigma7771296" # W Name
+        REAL_PLAYER_NAME = "JJSploitWorksV2" # W Name
         PLACE_ID = 4483381587
 
         while True:
