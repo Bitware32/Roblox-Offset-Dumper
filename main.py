@@ -6,6 +6,9 @@ from utils import GetRenderViewFromLog
 Window = None
 Process = Memopy(0)
 
+name_offset = 0x1
+children_offset = 0x1
+
 def fetch_roblox_pid():
     global Window, Process
 
@@ -22,6 +25,32 @@ def initialize():
         return False, -1
     
     return True, ProcessId
+
+def findFirstChild(instance, name):
+    global name_offset
+    global children_offset
+    container = []
+    while True:
+        start = Process.read_longlong(instance + children_offset)
+        end = Process.read_longlong(start + 0x8) # as far as i know the size never changes but im not sure
+        instances = Process.read_longlong(start)
+        f = 0
+
+        while f != 30:
+            container.append(Process.read_longlong(instances))
+            instances += 16
+            f += 1
+
+        for maybe_child_of_instance in container:
+            name_ptr = Process.read_longlong(maybe_child_of_instance + name_offset)
+            name_strrrrrrrrrrrrrr = Process.read_string(name_ptr)
+
+            if(name_strrrrrrrrrrrrrr == name):
+                print("[+] Children: " + hex(children_offset))
+                return maybe_child_of_instance
+
+        children_offset += 1
+        container.clear()
 
 def main():
     print("[+] Finding Roblox...")
@@ -48,21 +77,21 @@ def main():
 
         time.sleep(2)
 
-        name_offset = 0x1
+        global name_offset
         workspace_offset = 0x1
         parent_offset = 0x1
-        children_offset = 0x1
+        global children_offset
         class_descriptor_offset = 0x1
         players_address = 0x1
         localplayer_offset = 0x1
         modelinstance_offset = 0x1
         placeid_offset = 0x1
-
+        value_offset = 0x1
         jobid_offset = 0x1
 
         # CONFIG
         REAL_PLAYER_NAME = "JJSploitWorksV2" # W Name
-        PLACE_ID = 4483381587
+        PLACE_ID = 109337229657596
 
         while True:
 
@@ -130,42 +159,8 @@ def main():
 
             class_descriptor_offset += 1
 
-        container = []
-
-
         Process.suspend()
-        while True:
-
-            start = Process.read_longlong(datamodel + children_offset)
-            end = Process.read_longlong(start + 0x8) # as far as i know the size never changes but im not sure
-
-            instances = Process.read_longlong(start)
-
-            f = 0
-            found = False
-
-            while f != 30:
-                container.append(Process.read_longlong(instances))
-                instances += 16
-                f += 1
-
-            for maybe_child_of_instance in container:
-
-                name_ptr = Process.read_longlong(maybe_child_of_instance + name_offset)
-                name_strrrrrrrrrrrrrr = Process.read_string(name_ptr)
-
-
-                if(name_strrrrrrrrrrrrrr == "Players"):
-                    print("[+] Children: " + hex(children_offset))
-                    players_address = maybe_child_of_instance
-                    found = True
-            
-            if found:
-                break
-
-            children_offset += 1
-            container.clear()
-        
+        players_address = findFirstChild(datamodel, "Players")
         Process.resume()
 
         Process.suspend()
@@ -179,6 +174,18 @@ def main():
 
             if Process.read_string(name_sigma) == REAL_PLAYER_NAME:
                 print("[+] LocalPlayer: " + hex(localplayer_offset))
+
+                # Finds value offset
+                stringInstance_ptr = findFirstChild(localplayer_ptr, "StrValInst")
+                while True:
+                    if value_offset > 0x1000:
+                        print("[-] Value: failed")
+                        break
+                    if Process.read_string(stringInstance_ptr + value_offset) == "Hallo":
+                        print("[+] Value: " + hex(value_offset))
+                        break
+                    value_offset += 1
+
                 break
 
             localplayer_offset+=1
