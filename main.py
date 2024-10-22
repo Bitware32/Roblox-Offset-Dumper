@@ -3,6 +3,14 @@ import string, random, time
 from memory.api import Memopy
 from utils import GetRenderViewFromLog
 
+# Instructions
+#Enter your username
+REAL_PLAYER_NAME = "JJSploitWorksV2" # W Name
+#Enter the place id | Ex, from URL, https://www.roblox.com/games/109337229657596/a-literal-baseplate-v2, the ID is 109337229657596
+PLACE_ID = 109337229657596
+#In Roblox Studio, configure game to create a StringValue with the name "StrValInst" and value "Hallo" in your local player, otherwise Value offset will fail
+
+
 Window = None
 Process = Memopy(0)
 
@@ -77,6 +85,8 @@ def main():
 
         time.sleep(2)
 
+        global REAL_PLAYER_NAME
+        global PLACE_ID
         global name_offset
         workspace_offset = 0x1
         parent_offset = 0x1
@@ -87,11 +97,6 @@ def main():
         modelinstance_offset = 0x1
         placeid_offset = 0x1
         value_offset = 0x1
-        jobid_offset = 0x1
-
-        # CONFIG
-        REAL_PLAYER_NAME = "JJSploitWorksV2" # W Name
-        PLACE_ID = 109337229657596
 
         while True:
 
