@@ -189,25 +189,40 @@ def main():
                 break
 
             localplayer_offset+=1
-        
         Process.resume()
 
+        Process.suspend()
         while True:
-
+            found = False
             possible_char = Process.read_longlong(localplayer_ptr + modelinstance_offset)
             possible_char_class_descriptor = Process.read_longlong(possible_char + class_descriptor_offset)
-            possible_char_class_descriptor_name = Process.read_string(Process.read_longlong(possible_char_class_descriptor + 0x8))
+
+            classname_offset = 0x1
+            while True:
+                possible_char_class_descriptor_name = Process.read_string(Process.read_longlong(possible_char_class_descriptor + classname_offset))
+
+                if possible_char_class_descriptor_name == "Model":
+                    found = True
+                    break
+
+                if classname_offset > 0xFF:
+                    classname_offset = 0
+                    break
+
+                classname_offset += 1
+
+            if found:
+                print("[+] ModelInstance: " + hex(modelinstance_offset))
+                print("[+] ClassName: " + hex(classname_offset))
+                break
 
             if modelinstance_offset > 0x1000:
                 print("[-] ModelInstance: failed")
-                break
-
-            if possible_char_class_descriptor_name == "Model":
-                print("[+] ModelInstance: " + hex(modelinstance_offset))
+                print("[-] ClassName: failed")
                 break
 
             modelinstance_offset += 1
-
+        Process.resume()
         
     else:
         print("[+] Couldn't find Roblox")
