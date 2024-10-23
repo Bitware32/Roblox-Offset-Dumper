@@ -4,12 +4,18 @@ from memory.api import Memopy
 from utils import GetRenderViewFromLog
 
 # Instructions
+#In Roblox Studio, configure game to create a StringValue with the name "StrValInst" and value "Hallo" in your local player, otherwise Value offset will fail
 #Enter your username
 REAL_PLAYER_NAME = "JJSploitWorksV2" # W Name
 #Enter the place id | Ex, from URL, https://www.roblox.com/games/109337229657596/a-literal-baseplate-v2, the ID is 109337229657596
 PLACE_ID = 109337229657596
-#In Roblox Studio, configure game to create a StringValue with the name "StrValInst" and value "Hallo" in your local player, otherwise Value offset will fail
+#Idk how to dump these offsets, but they're needed, so find them and input them
+#Doesn't change often, but doesn't seem to move far when it does. Try manually bruteforcing by going up/down in increments of 0x8
+MODULESCRIPTEMBEDDED_OFFSET = 0x168 #10/23/24
 
+###
+#Do not change below unless you know what you're doing
+###
 
 Window = None
 Process = Memopy(0)
@@ -228,6 +234,14 @@ def main():
 
             modelinstance_offset += 1
         Process.resume()
+
+        print("[Maybe] These addresses are not dumped, but found with guess work and help from user input")
+        #All of these offsets seem to move at the same change, so just calculate the change of one and apply it to the others
+        global MODULESCRIPTEMBEDDED_OFFSET
+        OFFSET_DIFF = 0x160 - MODULESCRIPTEMBEDDED_OFFSET
+        print("[Maybe] ModuleScriptEmbedded: " + hex(MODULESCRIPTEMBEDDED_OFFSET) + " | (User Input)")
+        print("[Maybe] IsCoreScript: " + hex(0x1a8 - OFFSET_DIFF))
+        print("[Maybe] LocalScriptEmbedded : " + hex(0x1c0 - OFFSET_DIFF))
         
     else:
         print("[+] Couldn't find Roblox")
