@@ -4,14 +4,17 @@ from memory.api import Memopy
 from utils import GetRenderViewFromLog
 
 # Instructions
+
 #In Roblox Studio, configure game to create a StringValue with the name "StrValInst" and value "Hallo" in your local player, otherwise Value offset will fail
 #Enter your username
 REAL_PLAYER_NAME = "JJSploitWorksV2" # W Name
 #Enter the place id | Ex, from URL, https://www.roblox.com/games/109337229657596/a-literal-baseplate-v2, the ID is 109337229657596
 PLACE_ID = 109337229657596
+
 #Idk how to dump these offsets, but they're needed, so find them and input them
 #Doesn't change often, but doesn't seem to move far when it does. Try manually bruteforcing by going up/down in increments of 0x8
 MODULESCRIPTEMBEDDED_OFFSET = 0x168 #10/23/24
+
 
 ###
 #Do not change below unless you know what you're doing
@@ -74,17 +77,10 @@ def main():
 
         time.sleep(1)
 
-        print("[+] Getting DataModel...")
-       # Process.suspend()
-
+        print("[+] Getting RenderView...")
+        # Process.suspend()
         RenderView = GetRenderViewFromLog()
-
-        datamodel_ptr = Process.read_longlong(RenderView + 0x118)
-        datamodel = Process.read_longlong(datamodel_ptr + 0x1a8)
-
-        print("[+] Found DataModel: " + hex(datamodel))
-
-       # Process.resume()
+        # Process.resume()
         time.sleep(1)
 
         print("[+] Dumping...")
@@ -94,6 +90,8 @@ def main():
         global REAL_PLAYER_NAME
         global PLACE_ID
         global name_offset
+        DATA_MODEL_PTR_1 = 0x118
+        DATA_MODEL_PTR_2 = 0x1
         workspace_offset = 0x1
         parent_offset = 0x1
         global children_offset
@@ -104,19 +102,70 @@ def main():
         placeid_offset = 0x1
         value_offset = 0x1
 
+        #Finds datamodel
+        #datamodel_ptr = Process.read_longlong(RenderView + DATA_MODEL_PTR_1)
+        #datamodel = Process.read_longlong(datamodel_ptr + DATA_MODEL_PTR_2)
+        #print("[+] Found DataModel: " + hex(datamodel))
+
+        #Finds datamodel and name offset
+        print("[+] Getting Datamodel...")
+
+        #This scan takes a really long to complete if truly bruteforcing from 0, so use history to provide guess work
+        if DATA_MODEL_PTR_1 > 0 :
+            print("[warn] Datamodel scanning skipping to " + hex(DATA_MODEL_PTR_1))
+
         while True:
+            datamodel_ptr = Process.read_longlong(RenderView + DATA_MODEL_PTR_1)
 
-            ptr = Process.read_longlong(datamodel + name_offset)
-            instance_name = Process.read_string(ptr)
+            if DATA_MODEL_PTR_1 > 0x250:
+                print("[-] DATA_MODEL_PTR_1: failed.")
+                return print("Failed to find datamodel")
+            
+            found = False
+            
+            while True:
+                datamodel = Process.read_longlong(datamodel_ptr + DATA_MODEL_PTR_2)
 
-            if instance_name == "Game":
-                print("[+] Name: " + hex(name_offset))
+                if DATA_MODEL_PTR_2 > 0x250:
+                    DATA_MODEL_PTR_2 = 0x1
+                    break
+
+                #Finds name offset
+                while True:
+
+                    ptr = Process.read_longlong(datamodel + name_offset)
+                    instance_name = Process.read_string(ptr)
+
+                    #if instance_name.isalpha() and len(instance_name) > 3:
+                    #    print(instance_name)
+
+                    if instance_name == "Game" or instance_name == "game" or instance_name == "DataModel":
+                        print("[+] Found DATA_MODEL_PTR_1: " + hex(DATA_MODEL_PTR_1))
+                        print("[+] Found DATA_MODEL_PTR_2: " + hex(DATA_MODEL_PTR_2))
+                        print("[+] Found DataModel: " + hex(datamodel))
+                        print("[+] Name: " + hex(name_offset))
+                        found = True
+                        break
+
+                    if name_offset > 0x150:
+                        name_offset = 0x1
+                        break
+
+                    #print(hex(DATA_MODEL_PTR_1) + " " + hex(DATA_MODEL_PTR_2) + " " + hex(name_offset))
+
+                    name_offset += 1
+
+                if found:
+                    break
+
+                DATA_MODEL_PTR_2 += 1
+
+            #print(hex(DATA_MODEL_PTR_1) + " " + hex(DATA_MODEL_PTR_2) + " " + hex(name_offset))
+
+            if found:
                 break
 
-            if name_offset == 0x48:
-                print(instance_name)
-
-            name_offset += 1
+            DATA_MODEL_PTR_1 += 1
 
         while True:
             placeid = Process.read_longlong(datamodel + placeid_offset)
@@ -142,7 +191,6 @@ def main():
                 break
         
             workspace_offset += 1
-
         
         while True:
             parent_ptr = Process.read_longlong(workspace_ptr + parent_offset)
