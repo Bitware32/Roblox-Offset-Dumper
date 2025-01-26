@@ -152,6 +152,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\ntdll.h" />
+    <ClInclude Include="include\scanner.hpp" />
     <ClInclude Include="include\xeno.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>

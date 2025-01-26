@@ -7,7 +7,6 @@
 
 #include "ntdll.h"
 #include <iostream>
-#include <scanner.h>
 
 std::vector<std::uintptr_t> functions::GetChildrenAddresses(std::uintptr_t address, std::uint64_t Ochildren, HANDLE handle) {
     std::vector<std::uintptr_t> children;

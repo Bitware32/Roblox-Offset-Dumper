@@ -4,8 +4,7 @@
 
 #include "xeno.h"
 #include "ntdll.h"
-#include "resource.h"
-#include "scanner.h"
+#include "scanner.hpp"
 
 #include <TlHelp32.h>
 
@@ -51,6 +50,17 @@ inline void assertc(bool c, const char* m = "An error occurred") {
     exit(1);
 }
 
+void clear_console() {
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    DWORD console_size, chars_written;
+    GetConsoleScreenBufferInfo(hConsole, &csbi);
+    console_size = csbi.dwSize.X * csbi.dwSize.Y;
+    FillConsoleOutputCharacter(hConsole, ' ', console_size, { 0, 0 }, &chars_written);
+    FillConsoleOutputAttribute(hConsole, csbi.wAttributes, console_size, { 0, 0 }, &chars_written);
+    SetConsoleCursorPosition(hConsole, { 0, 0 });
+}
+
 std::uintptr_t GetBaseAddress(DWORD pid) {
     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, pid);
     if (snapshot == INVALID_HANDLE_VALUE) return 0;
@@ -66,7 +76,6 @@ std::uintptr_t GetBaseAddress(DWORD pid) {
     CloseHandle(snapshot);
     return 0;
 }
-
 
 int APIENTRY WinMain(
     _In_ HINSTANCE hInstance,
@@ -89,35 +98,24 @@ int APIENTRY WinMain(
     HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, TRUE, pid);
     assertc(hProcess != 0, "Could not open Roblox process.");
 
-    std::uintptr_t base = GetBaseAddress(pid);
-    //std::cout << std::hex << "base: 0x" << base << std::endl;
+    std::vector<unsigned char> pattern = {
+        0x52, 0x65, 0x6e, 0x64, 0x65, 0x72, 0x4a, 0x6f,
+        0x62, 0x28, 0x45, 0x61, 0x72, 0x6c, 0x79, 0x52,
+        0x65, 0x6e, 0x64, 0x65, 0x72, 0x69, 0x6e, 0x67,
+        0x3b
+    }; // HBytes: 52 65 6e 64 65 72 4a 6f 62 28 45 61 72 6c 79 52 65 6e 64 65 72 69 6e 67 3b
+       // String: RenderJob(EarlyRendering;
 
-    std::uintptr_t sct = read_memory<std::uintptr_t>(base + 0x5C19D28, hProcess);
-    //std::cout << "scheduler: 0x" << sct << std::endl;
+    std::cout << "Scanning For DataModel..." << std::endl;
 
-    std::uintptr_t ts = read_memory<std::uintptr_t>(sct + 0x198, hProcess); // scheduler start
-    std::uintptr_t te = read_memory<std::uintptr_t>(sct + 0x1A0, hProcess); // scheduler end
+    std::uintptr_t stringAddress = pattern_scan(pattern, hProcess);
+    assertc(stringAddress != 0, "String address not found.");
 
-    std::uintptr_t renderview = 0;
+    std::uintptr_t RenderView = read_memory<std::uintptr_t>(stringAddress + 0x1e8, hProcess);
+    std::uintptr_t dm1 = read_memory<std::uintptr_t>(RenderView + 0x118, hProcess);
+    std::uintptr_t DataModel = read_memory<std::uintptr_t>(dm1 + 0x1a8, hProcess);
 
-    for (std::uintptr_t job = ts; job < te; job += 0x10) {
-        std::uintptr_t cptr = read_memory<std::uintptr_t>(job, hProcess);
-        if (functions::ReadRobloxString(cptr + 0x90, hProcess) == "RenderJob") {
-            //std::cout << "renderjob: 0x" << job << std::endl;
-            renderview = cptr;
-        }
-    }
-
-    //pausec();
-    /*
-    std::uintptr_t renderview = GetRV(hProcess);
-    assertc(renderview != 0, "Could not retrieve renderview.");
-    */
-
-    std::uintptr_t fakeDatamodel = read_memory<std::uintptr_t>(renderview + 0xb0, hProcess);
-    std::uintptr_t DataModel = fakeDatamodel + 0x190;
-    //std::uintptr_t DataModel = GetDataModel(hProcess);
-    assertc(DataModel != 0, "Could not get DataModel");
+    clear_console();
 
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
     DWORD dwMode = 0;
@@ -221,6 +219,11 @@ int APIENTRY WinMain(
         std::cout << "\n" << t << com << "// Other\n";
         std::cout << sOffset << "LocalPlayer = " << num << "0x" << offsets::LocalPlayer << g << ";\n";
         std::cout << "}\n\n";
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> duration = end - start;
+
+        std::cout << std::fixed << std::setprecision(3);
+        std::cout << "Took " << num << duration.count() << g << " seconds to get all offsets.\n" << com << std::endl;
         assertc(false, "Could not retrieve the remaining offsets from the Roblox menu. Please join a Roblox game.");
     }
 
@@ -279,10 +282,10 @@ int APIENTRY WinMain(
     std::cout << "}\n\n";
 
     auto end = std::chrono::high_resolution_clock::now();
-    //std::chrono::duration<double> duration = end - start;
+    std::chrono::duration<double> duration = end - start;
 
     std::cout << std::fixed << std::setprecision(3);
-    //std::cout << "Took " << num << duration.count() << g << " seconds to get all offsets." << std::endl;
+    std::cout << "Took " << num << duration.count() << g << " seconds to get all offsets." << std::endl;
 
     pausec();
 
